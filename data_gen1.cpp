@@ -31,9 +31,9 @@ double sensor_range = 30.00;
 double sensor_angle_range = 2*pi/5;
 
 double odom_stddev_r = 0.1;//0.1m error
-double odom_stddev_theeta = 0.1;//about 5 degrees
+double odom_stddev_theeta = 0.2;//about 5 degrees
 double sensor_stddev_r = 1;//1m error 
-double sensor_stddev_theeta = 0.05;//about 2.5 degrees error
+double sensor_stddev_theeta = 0.1;//about 0.5 degrees error
 
 typedef struct point_2d
 {
@@ -92,7 +92,8 @@ void findLandmarksInRange(vector<int> &arr_indices, td_pose robot_pose_curr, vec
 
 		if( dist_pts(curr_point, landmark_map_for_sim[i]) < sensor_range)
 		{
-			theeta_lm_wrto_robot_orientation = find_angle(curr_point,landmark_map_for_sim[i]) - robot_pose_curr.theeta;
+			theeta_lm_wrto_robot_orientation = find_angle(curr_point,landmark_map_for_sim[i]);
+			theeta_lm_wrto_robot_orientation = remainder(theeta_lm_wrto_robot_orientation, (2*pi)) - robot_pose_curr.theeta;
 			theeta_lm_wrto_robot_orientation = remainder(theeta_lm_wrto_robot_orientation,(2*pi));
 			if(abs(theeta_lm_wrto_robot_orientation) < sensor_angle_range)
 				arr_indices.push_back(i);
@@ -113,21 +114,23 @@ namespace
 	    {
 	    	std::cout<<"Robot pose: ("<<robot_pose_curr.x<<","<<robot_pose_curr.y<<","<<robot_pose_curr.theeta<<")  ";
 	    	robot_poses.push_back(robot_pose_curr);
-		    odom_observed.r = RandNormal()*odom_stddev_r + odom_ideal.r;
+	    	odom_observed.r = (2*((double) rand() / (RAND_MAX))-1)*odom_stddev_r + odom_ideal.r;
+		    //odom_observed.r = RandNormal()*odom_stddev_r + odom_ideal.r;
 
-		    //odom_observed.theeta = (2*((double) rand() / (RAND_MAX))-1)*odom_stddev_theeta + odom_ideal.theeta;
-		    odom_observed.theeta = RandNormal()*odom_stddev_theeta + odom_ideal.theeta;
+		    odom_observed.theeta = (2*((double) rand() / (RAND_MAX))-1)*odom_stddev_theeta + odom_ideal.theeta;
+		   //odom_observed.theeta = remainder(RandNormal()*odom_stddev_theeta + odom_ideal.theeta, (2*pi));
+
 		    std::cout<<"Odom_observed: ("<<odom_observed.r<<","<<odom_observed.theeta<<")"<<std::endl;
 		    theeta_temp = remainder(odom_observed.theeta + robot_pose_curr.theeta, (2*pi));
 		    robot_pose_curr.x = robot_pose_curr.x + (odom_observed.r)*cos(theeta_temp); 
 		    robot_pose_curr.y = robot_pose_curr.y + (odom_observed.r)*sin(theeta_temp);
-		    robot_pose_curr.theeta = remainder(robot_pose_curr.theeta + odom_observed.theeta, (2*pi));
+		    robot_pose_curr.theeta = theeta_temp;
 	    }
 	    return;
 	}
 
-	void simulateSensorReadings(vector<int> &sensor_reading_nums, vector<vector<rel_vec> > &sensor_readings, 
-			vector<point_2d> landmark_map_for_sim, vector<point_2d> &landmarks_detected_actually, vector<point_2d> &gen_lms)
+	void simulateSensorReadings(vector<td_pose> &ground_truth_robot_poses, vector<int> &sensor_reading_nums, vector<vector<rel_vec> > &sensor_readings, 
+			vector<point_2d> landmark_map_for_sim, vector<int> &landmarks_detected_actually, vector<point_2d> &gen_lms)
 	{
 		rel_vec odom_ideal; odom_ideal.r=1; odom_ideal.theeta=0;
 	    td_pose robot_pose_curr;
@@ -141,20 +144,25 @@ namespace
 	    double temp_angle;
 	    for(int i=0;i<=num_steps;i++)
 	    {
+	    	ground_truth_robot_poses.push_back(robot_pose_curr);
 	    	temp_pt.x = robot_pose_curr.x; temp_pt.y = robot_pose_curr.y;
 		    findLandmarksInRange(arr_indices, robot_pose_curr, landmark_map_for_sim);
 		   	sensor_reading_nums.push_back(arr_indices.size());
 
 		    for(int j=0;j<arr_indices.size();j++)
 		    {
-		    	landmarks_detected_actually.push_back(landmark_map_for_sim[arr_indices[j]]);
+		    	landmarks_detected_actually.push_back(arr_indices[j]);
 		    	temp_rel_vec.r = dist_pts(landmark_map_for_sim[arr_indices[j]], temp_pt);
-		        temp_rel_vec.theeta = find_angle(temp_pt,landmark_map_for_sim[arr_indices[j]]) - robot_pose_curr.theeta;
+		        temp_rel_vec.theeta = find_angle(temp_pt,landmark_map_for_sim[arr_indices[j]]);
+		        temp_rel_vec.theeta = remainder(temp_rel_vec.theeta, (2*pi)) - robot_pose_curr.theeta;
 		        temp_rel_vec.theeta = remainder(temp_rel_vec.theeta,(2*pi));
 		        //is from 0 to pi or 0 to -pi
 
-		        temp_rel_vec.r = RandNormal() * sensor_stddev_r + temp_rel_vec.r;
-		        temp_rel_vec.theeta = RandNormal() * sensor_stddev_theeta + temp_rel_vec.theeta;
+		        //temp_rel_vec.r = RandNormal() * sensor_stddev_r + temp_rel_vec.r;
+		        //temp_rel_vec.theeta = RandNormal() * sensor_stddev_theeta + temp_rel_vec.theeta;
+		        temp_rel_vec.r = (2*((double) rand() / (RAND_MAX))-1) * sensor_stddev_r + temp_rel_vec.r;
+		        temp_rel_vec.theeta = (2*((double) rand() / (RAND_MAX))-1) * sensor_stddev_theeta + temp_rel_vec.theeta;
+
 		        temp_rel_vec.theeta = remainder(temp_rel_vec.theeta,(2*pi));
 		        temp_rel_vec_arr.push_back(temp_rel_vec);
 
@@ -189,14 +197,17 @@ int main(int argc, char** argv)
 	  landmark_map_for_sim.push_back(temp_point);
 	  fin>>temp_point.x;
 	}
-	vector<point_2d> landmarks_detected_actually;
+	std::cout<<"Size of the landmark map for sim:"<<landmark_map_for_sim.size()<<std::endl;
+
+	vector<int> landmarks_detected_actually;
+	vector<td_pose> ground_truth_robot_poses;
 	vector<td_pose> robot_poses;
 	vector<vector<rel_vec> > sensor_readings;
 	vector<int> sensor_reading_nums;
 	vector<point_2d> gen_lms;
 	std::cout<<"Simulating..."<<std::endl;
 	simulatePoses(robot_poses);
-	simulateSensorReadings(sensor_reading_nums, sensor_readings, landmark_map_for_sim ,landmarks_detected_actually, gen_lms);
+	simulateSensorReadings(ground_truth_robot_poses, sensor_reading_nums, sensor_readings, landmark_map_for_sim ,landmarks_detected_actually, gen_lms);
 	std::cout<<"Finished simulating..."<<std::endl;	
 
 	std::ofstream robot_posns;
@@ -205,6 +216,13 @@ int main(int argc, char** argv)
     	robot_posns<<robot_poses[i].x<<","<<robot_poses[i].y<<","<<robot_poses[i].theeta<<std::endl;
     robot_posns.close();
 	std::cout<<"Saved the odometry simulated values into robot_posns.txt"<<std::endl;
+
+	std::ofstream ground_truth_robot_posns;
+    ground_truth_robot_posns.open("ground_truth_robot_posns.txt");
+    for(int i=0;i<ground_truth_robot_poses.size();i++)
+    	ground_truth_robot_posns<<ground_truth_robot_poses[i].x<<","<<ground_truth_robot_poses[i].y<<","<<ground_truth_robot_poses[i].theeta<<std::endl;
+    ground_truth_robot_posns.close();
+	std::cout<<"Saved the odometry ground truth values into ground_truth_robot_posns.txt"<<std::endl;
 
 	std::ofstream sensor_observns;
     sensor_observns.open("sensor_observns.txt");
@@ -225,7 +243,7 @@ int main(int argc, char** argv)
 	std::ofstream lms_seen;
     lms_seen.open("seen_lms.txt");
     for(int i=0;i<landmarks_detected_actually.size();i++)
-    		lms_seen<<landmarks_detected_actually[i].x<<","<<landmarks_detected_actually[i].y<<std::endl;
+    		lms_seen<<landmarks_detected_actually[i]<<std::endl;
     lms_seen.close();
 	std::cout<<"Saved the landmarks from the map that have been observed into seen_lms.txt"<<std::endl;
 
@@ -234,7 +252,7 @@ int main(int argc, char** argv)
     for(int i=0;i<gen_lms.size();i++)
     		gen_lms_for_ver<<gen_lms[i].x<<","<<gen_lms[i].y<<std::endl;
     gen_lms_for_ver.close();
-	std::cout<<"Gnerated landmarks for verification have been saved into gen_lms_for_ver.txt"<<std::endl;
+	std::cout<<"Generated landmarks for verification have been saved into gen_lms_for_ver.txt"<<std::endl;
 
 	std::ofstream guessed_map_initial;
 	point_2d pt_temp;

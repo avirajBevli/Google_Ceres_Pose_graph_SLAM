@@ -6,13 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/home/aviraj/my_ceres/random.h
+/home/aviraj/new_slam/random.h
 math.h
 -
 stdlib.h
 -
 
-/home/aviraj/my_ceres/slam.cpp
+/home/aviraj/new_slam/slam.cpp
 cstdio
 -
 math.h
@@ -20,15 +20,15 @@ math.h
 vector
 -
 ceres/ceres.h
-/home/aviraj/my_ceres/ceres/ceres.h
+/home/aviraj/new_slam/ceres/ceres.h
 ceres/dynamic_autodiff_cost_function.h
-/home/aviraj/my_ceres/ceres/dynamic_autodiff_cost_function.h
+/home/aviraj/new_slam/ceres/dynamic_autodiff_cost_function.h
 gflags/gflags.h
-/home/aviraj/my_ceres/gflags/gflags.h
+/home/aviraj/new_slam/gflags/gflags.h
 glog/logging.h
-/home/aviraj/my_ceres/glog/logging.h
+/home/aviraj/new_slam/glog/logging.h
 random.h
-/home/aviraj/my_ceres/random.h
+/home/aviraj/new_slam/random.h
 fstream
 -
 

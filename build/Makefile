@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/aviraj/my_ceres
+CMAKE_SOURCE_DIR = /home/aviraj/new_slam
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/aviraj/my_ceres/build
+CMAKE_BINARY_DIR = /home/aviraj/new_slam/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/aviraj/my_ceres/build/CMakeFiles /home/aviraj/my_ceres/build/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aviraj/new_slam/build/CMakeFiles /home/aviraj/new_slam/build/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/aviraj/my_ceres/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aviraj/new_slam/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,32 +111,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named slam
-
-# Build rule for target.
-slam: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 slam
-.PHONY : slam
-
-# fast build rule for target.
-slam/fast:
-	$(MAKE) -f CMakeFiles/slam.dir/build.make CMakeFiles/slam.dir/build
-.PHONY : slam/fast
-
-#=============================================================================
-# Target rules for targets named hw
-
-# Build rule for target.
-hw: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 hw
-.PHONY : hw
-
-# fast build rule for target.
-hw/fast:
-	$(MAKE) -f CMakeFiles/hw.dir/build.make CMakeFiles/hw.dir/build
-.PHONY : hw/fast
-
-#=============================================================================
 # Target rules for targets named data_gen1
 
 # Build rule for target.
@@ -148,6 +122,19 @@ data_gen1: cmake_check_build_system
 data_gen1/fast:
 	$(MAKE) -f CMakeFiles/data_gen1.dir/build.make CMakeFiles/data_gen1.dir/build
 .PHONY : data_gen1/fast
+
+#=============================================================================
+# Target rules for targets named slam
+
+# Build rule for target.
+slam: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 slam
+.PHONY : slam
+
+# fast build rule for target.
+slam/fast:
+	$(MAKE) -f CMakeFiles/slam.dir/build.make CMakeFiles/slam.dir/build
+.PHONY : slam/fast
 
 data_gen1.o: data_gen1.cpp.o
 
@@ -175,33 +162,6 @@ data_gen1.s: data_gen1.cpp.s
 data_gen1.cpp.s:
 	$(MAKE) -f CMakeFiles/data_gen1.dir/build.make CMakeFiles/data_gen1.dir/data_gen1.cpp.s
 .PHONY : data_gen1.cpp.s
-
-hw.o: hw.cpp.o
-
-.PHONY : hw.o
-
-# target to build an object file
-hw.cpp.o:
-	$(MAKE) -f CMakeFiles/hw.dir/build.make CMakeFiles/hw.dir/hw.cpp.o
-.PHONY : hw.cpp.o
-
-hw.i: hw.cpp.i
-
-.PHONY : hw.i
-
-# target to preprocess a source file
-hw.cpp.i:
-	$(MAKE) -f CMakeFiles/hw.dir/build.make CMakeFiles/hw.dir/hw.cpp.i
-.PHONY : hw.cpp.i
-
-hw.s: hw.cpp.s
-
-.PHONY : hw.s
-
-# target to generate assembly for a file
-hw.cpp.s:
-	$(MAKE) -f CMakeFiles/hw.dir/build.make CMakeFiles/hw.dir/hw.cpp.s
-.PHONY : hw.cpp.s
 
 slam.o: slam.cpp.o
 
@@ -237,16 +197,12 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
-	@echo "... slam"
 	@echo "... edit_cache"
-	@echo "... hw"
 	@echo "... data_gen1"
+	@echo "... slam"
 	@echo "... data_gen1.o"
 	@echo "... data_gen1.i"
 	@echo "... data_gen1.s"
-	@echo "... hw.o"
-	@echo "... hw.i"
-	@echo "... hw.s"
 	@echo "... slam.o"
 	@echo "... slam.i"
 	@echo "... slam.s"

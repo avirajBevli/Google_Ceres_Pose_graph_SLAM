@@ -29,9 +29,9 @@ double sensor_range = 30.00;
 double sensor_angle_range = 2*pi/5;
 
 double odom_stddev_r = 0.1;//0.1m error
-double odom_stddev_theeta = 0.1;//about 5 degrees
-double sensor_stddev_r = 1;//0.5m error 
-double sensor_stddev_theeta = 0.05;//about 2 degrees error
+double odom_stddev_theeta = 0.2;//about 5 degrees
+double sensor_stddev_r = 0.5;//0.5m error 
+double sensor_stddev_theeta = 0.1;//about 2 degrees error
 /////////////////////////////////
 
 typedef struct point_2d
@@ -76,6 +76,7 @@ struct OdometryConstraint
     const td_pose odom_val;
 };
 
+//problem.AddResidualBlock(OdometryConstraint1::Create(odom_val), NULL, parameter_block_odom[i]);
 struct OdometryConstraint1
 {
     typedef AutoDiffCostFunction<OdometryConstraint1, 3, 3> OdometryCostFunction1;//3 is the dimension of the residual, 3 is the dimension of the parameter block
@@ -123,14 +124,14 @@ struct LandmarkConstraint
 			si_proj_theeta = (pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
 
 		else if(lm_global_y < parameter_block_odom_i[1] && lm_global_x < parameter_block_odom_i[0])
-			si_proj_theeta = (pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
+			si_proj_theeta = (-1*pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
 		else
-			si_proj_theeta = (2*pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0]) ));	
-		if(si_proj_theeta > pi)
+			si_proj_theeta = (atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0]) ));	
+		/*if(si_proj_theeta > pi)
 			si_proj_theeta = (2*pi) - si_proj_theeta;
 		si_proj_theeta = si_proj_theeta - parameter_block_odom_i[2];
 		if(si_proj_theeta > pi)
-			si_proj_theeta = (2*pi) - si_proj_theeta;
+			si_proj_theeta = (2*pi) - si_proj_theeta;*/
 
 		residual[0] = (T(si.r) - si_proj_r) / T(sensor_stddev_r);
 		residual[1] = (T(si.theeta) - si_proj_theeta) / T(sensor_stddev_theeta);
@@ -163,6 +164,7 @@ struct LandmarkConstraint1
 		lm_global_y = T(sj.r)*sin((pi/4) + T(sj.theeta));
 
 		si_proj_r = sqrt( pow(lm_global_x - parameter_block_odom_i[0], 2) + pow(lm_global_y - parameter_block_odom_i[1], 2) );
+		//si_proj_theeta will belong to -pi to pi
 		if(lm_global_y >= parameter_block_odom_i[1] && lm_global_x >= parameter_block_odom_i[0])
 			si_proj_theeta = atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0]));
 
@@ -170,17 +172,17 @@ struct LandmarkConstraint1
 			si_proj_theeta = (pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
 
 		else if(lm_global_y < parameter_block_odom_i[1] && lm_global_x < parameter_block_odom_i[0])
-			si_proj_theeta = (pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
+			si_proj_theeta = (-1*pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0])) );
 		else
-			si_proj_theeta = (2*pi + atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0]) ));
-		if(si_proj_theeta > pi)
+			si_proj_theeta = (atan((lm_global_y - parameter_block_odom_i[1])/(lm_global_x - parameter_block_odom_i[0]) ));
+	/*	if(si_proj_theeta > pi)
 			si_proj_theeta = (2*pi) - si_proj_theeta;
-		si_proj_theeta = si_proj_theeta - parameter_block_odom_i[2];
-		if(si_proj_theeta > pi)
-			si_proj_theeta = (2*pi) - si_proj_theeta;
+		si_proj_theeta = si_proj_theeta - parameter_block_odom_i[2];*/
+/*		if(si_proj_theeta > pi)
+			si_proj_theeta = (2*pi) - si_proj_theeta;*/
 
-		residual[0] = (T(si.r) - si_proj_r) / T(sensor_stddev_r);
-		residual[1] = (T(si.theeta) - si_proj_theeta) / T(sensor_stddev_theeta);
+		residual[0] = (T(si.r) - si_proj_r) / T(sensor_stddev_r/100);
+		residual[1] = (T(si.theeta) - si_proj_theeta) / T(sensor_stddev_theeta/100);
 		return true;
     }
 
@@ -242,15 +244,38 @@ void findAndUpdateLandmarks(td_pose robot_pose_curr, vector<point_2d> &landmark_
 	return;
 }
 
-bool isInVec(int a, vector<int> arr){
+bool isInVec(int key, vector<int> arr){
 	for(int i=0;i<arr.size();i++){
-		if(arr[i]==a)
+		if(arr[i]==key)
 			return 1;
 	}
 	return 0;
 }
 
-//findPosesWithThisLandmark(i,pose_list,landmark_indices_found,lm_index);
+double find_angle(point_2d pt1, point_2d pt2)//returns angle in (0,2pi)
+{
+	int quadrant;
+	if(pt2.y>=pt1.y && pt2.x>=pt1.x)
+		quadrant = 1;
+	else if(pt2.y>pt1.y && pt2.x<pt1.x)
+		quadrant = 2;
+	else if(pt2.y<pt1.y && pt2.x<pt1.x)
+		quadrant = 3;
+	else 
+		quadrant = 4;
+
+	double a_tan_theeta = atan((pt2.y - pt1.y)/(pt2.x - pt1.x));
+	if(quadrant == 1)
+		return a_tan_theeta;
+	else if(quadrant == 2)
+		return (pi+a_tan_theeta);
+	else if(quadrant == 3)
+		return (pi+a_tan_theeta);
+	else 
+		return (2*pi+a_tan_theeta);
+}
+
+//findPosesWithThisLandmark(i,pose_list,landmark_indices_found,lm_index)
 void findPosesWithThisLandmark(int curr_pose_index, vector<int> &pose_list, vector<vector<int> > landmark_indices_found, int lm_index)
 {
 	for(int i=0;i<curr_pose_index;i++)
@@ -302,6 +327,19 @@ int main()
 	fin_poses.close();
 	std::cout<<"Read robot poses data from robot_posns.txt"<<std::endl;
 
+	vector<int> lm_indices;
+	std::ifstream fin_lm_indices; 
+	fin_lm_indices.open("seen_lms.txt");
+	int temp_int;
+	fin_lm_indices>>temp_int;
+	while(!fin_lm_indices.eof())
+	{
+		lm_indices.push_back(temp_int);
+		fin_lm_indices>>temp_int;
+	}
+	fin_lm_indices.close();
+	std::cout<<"Read lm_indices data from seen_lms.txt"<<std::endl;
+
 	vector<rel_vec> sensor_read_single_vec;
 	std::ifstream fin_observs; 
 	fin_observs.open("sensor_observns.txt");
@@ -328,22 +366,29 @@ int main()
 		fin_observ_nums>>temp;
 	}
 	fin_observ_nums.close();
-	std::cout<<"Read date of the number of sensor readings from each pose from sensor_observn_nums.txt"<<std::endl;
+	std::cout<<"Read data of the number of sensor readings from each pose from sensor_observn_nums.txt"<<std::endl;
 
 	vector<vector<rel_vec> > sensor_readings;
+	vector<vector<int> > landmark_indices_found;
 	vector<rel_vec> temo_vec;
+	vector<int> temo_int_vec;
 	int count=0;
-	for(int i=0;i<robot_poses.size();i++){
+	for(int i=0;i<robot_poses.size();i++)
+	{
 		int n = sensor_observn_nums[i];
-		for(int j=0;j<n;j++)
+		for(int j=0;j<n;j++){
+			temo_int_vec.push_back(lm_indices[count]);
 			temo_vec.push_back(sensor_read_single_vec[count++]);
+		}
 		sensor_readings.push_back(temo_vec);
+		landmark_indices_found.push_back(temo_int_vec);
 		
 		temo_vec.clear();
+		temo_int_vec.clear();
 	}
 
 	int n = robot_poses.size();
-	double** parameter_block_odom = (double**)malloc((n+1)*sizeof(double*));
+	double** parameter_block_odom = (double**)malloc((n)*sizeof(double*));
 	for(int i=0;i<n;i++)
 	{
 		parameter_block_odom[i] = (double*)malloc(3*sizeof(double));
@@ -352,14 +397,15 @@ int main()
 		parameter_block_odom[i][2] = robot_poses[i].theeta;
 	}
 
-	vector<point_2d> landmark_map;
-	vector<vector<int> > landmark_indices_found;
+/*	vector<point_2d> landmark_map;
 	Generate_init_map(landmark_map,landmark_indices_found,sensor_readings[0]);
 	std::cout<<"Landmarks found in the initial pose  ";
  	printvec(landmark_indices_found[0]);
-
+*/
 	ceres::Problem problem;
 
+	std::cout<<"Landmarks found in the current pose  ";
+ 	printvec(landmark_indices_found[0]);
 	for(int i=1;i<n;i++)
 	{
 		std::cout<<"i:"<<i<<" ";
@@ -367,64 +413,21 @@ int main()
 		odom_val.x = parameter_block_odom[i][0]-parameter_block_odom[i-1][0];
 		odom_val.y = parameter_block_odom[i][1]-parameter_block_odom[i-1][1];
 		odom_val.theeta = parameter_block_odom[i][2]-parameter_block_odom[i-1][2];
+	/*
 		if(i==1)
-		{
 			problem.AddResidualBlock(OdometryConstraint1::Create(odom_val), NULL, parameter_block_odom[i]);
-			
-			td_pose robot_pose_curr = robot_poses[1];
-			std::cout<<"robot_pose_curr: ("<<robot_pose_curr.x<<","<<robot_pose_curr.y<<","<<robot_pose_curr.theeta<<")"<<std::endl;
-			findAndUpdateLandmarks(robot_pose_curr, landmark_map, sensor_readings[i], landmark_indices_found);
-			std::cout<<"Landmarks found in the current pose  ";
-			printvec(landmark_indices_found[i]);
-			for(int j=0;j<sensor_readings[i].size();j++)
-			{
-				std::cout<<"j:"<<j<<" ";
-				rel_vec si = sensor_readings[i][j];
-				rel_vec sid;	sid.r=si.r;
-				if(si.theeta<0)
-					sid.theeta = (-1*si.theeta)+pi;
-				else
-					sid.theeta = si.theeta;
-				vector<int> pose_list;
-				int lm_index = landmark_indices_found[i][j];
-				std::cout<<"lm_index: "<<lm_index<<"  ("<<landmark_map[lm_index].x<<","<<landmark_map[i].y<<")"<<std::endl;
-				findPosesWithThisLandmark(i,pose_list,landmark_indices_found,lm_index);
-				std::cout<<"Poses with the same landmark: ";
-				printvec(pose_list);
-				for(int k=0;k<pose_list.size();k++)
-				{
-					std::cout<<"k:"<<k<<std::endl;
-					int pi = pose_list[k];
-					rel_vec sj = find_s_pi(sensor_readings, landmark_indices_found,pi,lm_index);//this is the index of the sensor_reading in the local sensor_readings[pi]
-					//vector, which corresponds to the same landmark(i.e. to the landmark lm_index)
-					rel_vec sjd; sjd.r = sj.r;
-					if(sj.theeta<0)
-						sjd.theeta = (-1*sj.theeta)+pi;
-					else
-						sjd.theeta = sj.theeta;
-					problem.AddResidualBlock(LandmarkConstraint1::Create(sj,si), NULL, parameter_block_odom[i]);
-				}
-		 		pose_list.clear();
-			}
-			continue;
-		}
-
+		else*/
 		problem.AddResidualBlock(OdometryConstraint::Create(odom_val), NULL, parameter_block_odom[i-1], parameter_block_odom[i]);
  		
  		td_pose robot_pose_curr = robot_poses[i];
  		std::cout<<"robot_pose_curr: ("<<robot_pose_curr.x<<","<<robot_pose_curr.y<<","<<robot_pose_curr.theeta<<")"<<std::endl;
- 		findAndUpdateLandmarks(robot_pose_curr, landmark_map, sensor_readings[i], landmark_indices_found);
  		std::cout<<"Landmarks found in the current pose  ";
  		printvec(landmark_indices_found[i]);
+	 	
  		for(int j=0;j<sensor_readings[i].size();j++)
  		{
  			std::cout<<"j:"<<j<<" ";
  			rel_vec si = sensor_readings[i][j];
- 			rel_vec sid;	sid.r = si.r;
- 			if(si.theeta<0)
- 				sid.theeta = (-1*si.theeta) + pi;
- 			else
- 				sid.theeta = si.theeta;
  			vector<int> pose_list;
  			int lm_index = landmark_indices_found[i][j];
  			std::cout<<"lm_index: "<<lm_index<<std::endl;
@@ -435,17 +438,12 @@ int main()
 			{
  				std::cout<<"k:"<<k<<std::endl;
 				int pi = pose_list[k];
-				rel_vec sj = find_s_pi(sensor_readings, landmark_indices_found,pi,lm_index);//this is the index of the sensor_reading in the local sensor_readings[pi]
-				//vector, which corresponds to the same landmark(i.e. to the landmark lm_index)
-				rel_vec sjd;	sjd.r=sj.r;
-				if(sj.theeta<0)
-					sjd.theeta = (-1*sj.theeta) + pi;
-				else
-					sjd.theeta = sj.theeta;
-				if(pi==0)
+				rel_vec sj = find_s_pi(sensor_readings, landmark_indices_found, pi, lm_index);//this is the index of the sensor_reading in the local sensor_readings[pi]
+				
+				/*if(pi==0)
 					problem.AddResidualBlock(LandmarkConstraint1::Create(sj,si), NULL, parameter_block_odom[i]);
-				else
-					problem.AddResidualBlock(LandmarkConstraint::Create(sj,si), NULL, parameter_block_odom[i], parameter_block_odom[pi]);
+				else*/
+				problem.AddResidualBlock(LandmarkConstraint::Create(sj,si), NULL, parameter_block_odom[i], parameter_block_odom[pi]);
 			}
  			pose_list.clear();
  		}
@@ -461,6 +459,35 @@ int main()
 	printf("Done.\n");
 
 	std::cout << summary.FullReport() << "\n";
+/*	double diff_x = 0 - parameter_block_odom[0][0];
+	double diff_y = 0 - parameter_block_odom[0][1];
+	double diff_z = (pi/4) - parameter_block_odom[0][2];
+	double r;
+	for(int i=0;i<n;i++){
+		parameter_block_odom[i][0] = parameter_block_odom[i][0] + diff_x;
+		parameter_block_odom[i][1] = parameter_block_odom[i][1] + diff_y;
+		parameter_block_odom[i][2] = parameter_block_odom[i][2] + diff_z;
+	}
+*/
+	point_2d zeroth_point; zeroth_point.x = parameter_block_odom[0][0], zeroth_point.y = parameter_block_odom[0][1];
+	point_2d curr_point;
+	double diff_theeta = (pi/4) - parameter_block_odom[0][2];
+	double shift_x = 0 - parameter_block_odom[0][0];
+	double shift_y = 0 - parameter_block_odom[0][1];
+	double r, theeta;
+	parameter_block_odom[0][0] = parameter_block_odom[0][0] + shift_x;
+	parameter_block_odom[0][1] = parameter_block_odom[0][1] + shift_y;
+	parameter_block_odom[0][2] = parameter_block_odom[0][0] + diff_theeta;
+	for(int i=1;i<n;i++){
+		curr_point.x = parameter_block_odom[i][0];
+		curr_point.y = parameter_block_odom[i][1];
+		r = dist_pts(zeroth_point,curr_point);
+		theeta = find_angle(zeroth_point,curr_point);
+		theeta = remainder(theeta,(2*pi));
+		parameter_block_odom[i][0] = (zeroth_point.x + r*cos(theeta + diff_theeta)) + shift_x;
+		parameter_block_odom[i][1] = (zeroth_point.y + r*sin(theeta + diff_theeta)) + shift_y;
+		parameter_block_odom[i][2] = parameter_block_odom[i][2] + diff_theeta;
+	}
 
 	std::ofstream generated_robot_poses;
 	generated_robot_poses.open("generated_robot_poses.txt");
@@ -481,9 +508,9 @@ int main()
 		}		
 	}
 	generated_map.close();
-	std::cout<<"Saved the generated robot poses into generated_map.txt"<<std::endl;
-
-	std::cout<<"Size of landmark_map: "<<landmark_map.size()<<std::endl;
+	std::cout<<"Saved the generate map into generated_map.txt"<<std::endl;
+/*
+	std::cout<<"Size of landmark_map: "<<landmark_map.size()<<std::endl;*/
 
 	return 0;
 }
